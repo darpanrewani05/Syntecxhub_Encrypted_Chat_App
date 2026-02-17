@@ -1,8 +1,6 @@
 import socket
 import threading
-from crypto_utils import decrypt_message, encrypt_message
 from datetime import datetime
-
 
 HOST = '127.0.0.1'
 PORT = 5000
@@ -10,20 +8,19 @@ PORT = 5000
 clients = []
 
 
-# Broadcast message to all clients
-def broadcast(message, sender_socket):
+# Broadcast encrypted message to all clients
+def broadcast(encrypted_message, sender_socket):
 
     for client in clients:
         if client != sender_socket:
             try:
-                encrypted = encrypt_message(message)
-                client.send(encrypted)
+                client.send(encrypted_message)
             except:
                 client.close()
                 clients.remove(client)
 
 
-# Handle client
+# Handle each client
 def handle_client(client_socket, address):
 
     print(f"[NEW CONNECTION] {address} connected.")
@@ -35,22 +32,21 @@ def handle_client(client_socket, address):
             if not encrypted_message:
                 break
 
-            message = decrypt_message(encrypted_message)
+            print(f"[FORWARDING] Encrypted message from {address}")
 
-            print(f"[{address}] {message}")
-
-            # Log message
+            # Log encrypted message
             with open("chat_log.txt", "a") as file:
-                file.write(f"{datetime.now()} {address}: {message}\n")
+                file.write(f"{datetime.now()} {address}: {encrypted_message}\n")
 
-            # Broadcast to others
-            broadcast(message, client_socket)
+            # Broadcast encrypted message
+            broadcast(encrypted_message, client_socket)
 
         except:
             break
 
     clients.remove(client_socket)
     client_socket.close()
+
     print(f"[DISCONNECTED] {address}")
 
 
@@ -71,7 +67,10 @@ def start_server():
 
         clients.append(client_socket)
 
-        thread = threading.Thread(target=handle_client, args=(client_socket, address))
+        thread = threading.Thread(
+            target=handle_client,
+            args=(client_socket, address)
+        )
 
         thread.start()
 
